@@ -1,0 +1,43 @@
+name: build-windows
+
+on:
+  push:
+    tags:
+      - "v*"     # 只在 tag 触发，例如 v1.0.0
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.21'
+
+      - name: Build windows binary (amd64)
+        run: |
+          mkdir build
+          set GOOS=windows
+          set GOARCH=amd64
+          go build -trimpath -ldflags "-s -w" -o build/app-windows-amd64.exe .
+
+      - name: Compress binary
+        run: |
+          cd build
+          powershell Compress-Archive -Path app-windows-amd64.exe -DestinationPath app-windows-amd64.zip
+          dir
+
+      - name: Create GitHub Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/app-windows-amd64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
